@@ -1,4 +1,5 @@
 # ArabicTranslator | アラビア語翻訳プラグイン
+<img width="385" height="164" alt="{4E81D746-D01A-48AD-AE77-AA872CD49092}" src="https://github.com/user-attachments/assets/51bb201f-844d-4b4f-83c4-f60b68c3a9e5" />
 
 [English](#english) | [日本語](#japanese)
 
