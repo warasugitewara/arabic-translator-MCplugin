@@ -1,0 +1,44 @@
+name: ArabicTranslator
+version: 1.0.0
+description: Arabic translation plugin for Minecraft Paper 1.21.6
+main: com.example.arabic.ArabicTranslatorPlugin
+authors:
+  - Warasugi
+api-version: 1.21
+
+commands:
+  arabic:
+    description: Enable or disable Arabic translation
+    usage: /arabic <enable|disable|status|api|reload|help>
+    aliases: [ar]
+
+permissions:
+  arabic.enable:
+    description: Allow enabling Arabic translation
+    default: op
+  arabic.disable:
+    description: Allow disabling Arabic translation
+    default: op
+  arabic.status:
+    description: Allow checking Arabic translation status
+    default: true
+  arabic.api:
+    description: Allow switching translation API
+    default: op
+  arabic.reload:
+    description: Allow reloading configuration
+    default: op
+  arabic.help:
+    description: Allow viewing help
+    default: true
+  arabic.*:
+    description: All Arabic translator permissions
+    default: op
+    children:
+      - arabic.enable
+      - arabic.disable
+      - arabic.status
+      - arabic.api
+      - arabic.reload
+      - arabic.help
+
