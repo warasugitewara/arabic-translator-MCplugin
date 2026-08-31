@@ -15,8 +15,19 @@ jobs:
     steps:
       - name: Latest published Paper API versions
         run: |
-          curl -s https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml \
-            | grep -o '<version>[^<]*</version>' | tail -12
+          BASE=https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api
+          echo "=== all versions ==="
+          curl -s $BASE/maven-metadata.xml | grep -o '<version>[^<]*</version>' | tr -d ' ' | tail -60
+          LATEST=$(curl -s $BASE/maven-metadata.xml | grep -o '<latest>[^<]*</latest>')
+          echo "=== latest tag: $LATEST ==="
+          V=$(curl -s $BASE/maven-metadata.xml | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | tail -1)
+          echo "=== pom of $V ==="
+          curl -s $BASE/$V/paper-api-$V.pom | head -60
+          echo "=== paper project api ==="
+          curl -s https://api.papermc.io/v2/projects/paper | head -c 2000 || true
+          echo
+          echo "=== fill api ==="
+          curl -s "https://fill.papermc.io/v3/projects/paper" | head -c 3000 || true
 
   build:
     runs-on: ubuntu-latest
