@@ -1,0 +1,89 @@
+# ===========================================================================
+#  ArabicTranslator
+#  Translates public chat into Arabic and shows a Latin transliteration.
+#  Docs: https://github.com/warasugitewara/arabic-translator-MCplugin
+# ===========================================================================
+
+# --- DeepL -----------------------------------------------------------------
+# Get a key at https://www.deepl.com/your-account/keys
+# Keep the single quotes: the key contains a colon, which YAML would otherwise
+# read as a key/value separator.
+deepl-api-key: 'your-deepl-api-key-here'
+
+# 'auto' picks the right endpoint from the key itself (free keys end in ':fx').
+# Override with 'free' or 'pro' only if you know you need to.
+deepl-api-version: 'auto'
+
+# Whether translation is on the first time the plugin starts. Afterwards
+# /arabic enable and /arabic disable remember the choice in state.yml, so this
+# file (and its comments) is never rewritten.
+translation-enabled: false
+
+# --- Translation backends --------------------------------------------------
+# Tried top to bottom. A backend that is unconfigured, rate limited or out of
+# quota is skipped and the next one answers, so chat keeps working.
+providers:
+  order:
+    - deepl
+    - mymemory
+
+  deepl:
+    # Leave empty unless you proxy DeepL through your own host.
+    endpoint: ''
+
+  # Free and keyless: about 5.000 characters a day, or 50.000 with an e-mail
+  # address. A good safety net for when the DeepL quota runs out.
+  mymemory:
+    enabled: true
+    email: ''
+    endpoint: 'https://api.mymemory.translated.net/get'
+    # MyMemory cannot auto-detect the source language; this is used instead.
+    assumed-source-language: 'en'
+
+  # Open source and self-hostable - unlimited and completely free if you run
+  # your own container, and no chat leaves your network.
+  #   docker run -p 5000:5000 libretranslate/libretranslate
+  libretranslate:
+    enabled: false
+    endpoint: 'http://localhost:5000/translate'
+    api-key: ''
+
+# --- Translation behaviour -------------------------------------------------
+translation:
+  target-language: 'AR'
+  # 'auto' lets the backend detect what players are typing.
+  source-language: 'auto'
+  # Longer messages are left alone; they are usually pasted spam.
+  max-length: 256
+  timeout-seconds: 8
+  # Minimum gap between two translated messages from the same player.
+  cooldown-millis: 750
+  # Skip messages that are already Arabic instead of round-tripping them.
+  skip-translated-messages: true
+
+# --- Cache -----------------------------------------------------------------
+# Repeated lines are answered from memory and never hit the network, which is
+# what keeps the free quotas usable on a busy server.
+cache:
+  max-entries: 1000
+  expire-minutes: 60
+
+# --- Display ---------------------------------------------------------------
+display:
+  romanization: true
+  # simple   - plain ASCII, renders in every Minecraft font
+  # academic - ALA-LC diacritics (ḥ, ṣ, ā, ʿ); needs a font that has them
+  romanization-style: 'simple'
+  # Break up consonant clusters with a default 'a' so the transliteration can
+  # actually be read out loud ("marahba" instead of "mrhb").
+  insert-short-vowels: true
+  # Whether players see translations before touching /arabic toggle.
+  players-receive-by-default: true
+
+  # MiniMessage format. Placeholders: <player> <message> <translation>
+  # <romanization> <provider>. See https://docs.advntr.dev/minimessage/
+  format: '<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple><gray> | </gray><yellow><italic><romanization></italic></yellow>'
+  format-without-romanization: '<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple>'
+
+# Logs every cache hit, request and response. Noisy - only for troubleshooting.
+debug: false

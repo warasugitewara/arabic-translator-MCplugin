@@ -1,11 +1,7 @@
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
 # IDE
 .idea/
@@ -21,7 +17,11 @@ dependency-reduced-pom.xml
 .DS_Store
 Thumbs.db
 
-# Build
+# Build output
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.class
 *.log
+
+# Local test server
+run/

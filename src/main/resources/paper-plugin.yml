@@ -1,0 +1,38 @@
+name: ArabicTranslator
+version: '${version}'
+main: com.warasugi.arabictranslator.ArabicTranslatorPlugin
+api-version: '${apiVersion}'
+description: '${description}'
+authors:
+  - Warasugi
+website: https://github.com/warasugitewara/arabic-translator-MCplugin
+
+permissions:
+  arabic.help:
+    description: Use /arabic and see the help
+    default: true
+  arabic.status:
+    description: Check translation status
+    default: true
+  arabic.toggle:
+    description: Show or hide translated chat for yourself
+    default: true
+  arabic.enable:
+    description: Turn translation on server-wide
+    default: op
+  arabic.disable:
+    description: Turn translation off server-wide
+    default: op
+  arabic.reload:
+    description: Reload config.yml
+    default: op
+  arabic.*:
+    description: Every ArabicTranslator permission
+    default: op
+    children:
+      arabic.help: true
+      arabic.status: true
+      arabic.toggle: true
+      arabic.enable: true
+      arabic.disable: true
+      arabic.reload: true
