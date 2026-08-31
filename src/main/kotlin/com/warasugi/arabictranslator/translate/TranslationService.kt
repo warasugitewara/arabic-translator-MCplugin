@@ -7,7 +7,7 @@
 
 package com.warasugi.arabictranslator.translate
 
-import com.warasugi.arabictranslator.romanize.ArabicRomanizer
+import com.warasugi.arabictranslator.romanize.Romanizer
 import com.warasugi.arabictranslator.translate.provider.TranslationException
 import com.warasugi.arabictranslator.translate.provider.TranslationProvider
 import com.warasugi.arabictranslator.translate.provider.TranslationRequest
@@ -33,7 +33,7 @@ import java.util.logging.Logger
 class TranslationService(
     private val providers: List<TranslationProvider>,
     private val cache: TranslationCache,
-    private val romanizer: ArabicRomanizer?,
+    private val romanizer: Romanizer?,
     private val targetLanguage: String,
     private val sourceLanguage: String?,
     private val scope: CoroutineScope,
@@ -45,7 +45,7 @@ class TranslationService(
     private val inFlight = ConcurrentHashMap<String, Deferred<TranslationResult?>>()
     private val suspendedUntil = ConcurrentHashMap<String, Long>()
 
-    /** `true` when at least one backend is usable; used to reject `/arabic enable`. */
+    /** `true` when at least one backend is usable; used to reject the enable command. */
     val hasUsableProvider: Boolean get() = providers.any { it.isConfigured }
 
     val providerIds: List<String> get() = providers.filter { it.isConfigured }.map { it.id }
@@ -119,12 +119,12 @@ class TranslationService(
         if (suspendedUntil.put(provider.id, System.currentTimeMillis() + suspendMillis) == null) {
             logger.warning(
                 "Pausing provider '${provider.id}' for ${suspendMillis / 60_000} minutes: " +
-                    "${reason.orEmpty()} (use /arabic reload after fixing the config to resume immediately)",
+                    "${reason.orEmpty()} - fix the config and reload the plugin to resume immediately",
             )
         }
     }
 
-    /** Drops caches and un-suspends every provider; called from `/arabic reload`. */
+    /** Drops caches and un-suspends every provider; called on reload. */
     fun reset() {
         cache.clear()
         suspendedUntil.clear()

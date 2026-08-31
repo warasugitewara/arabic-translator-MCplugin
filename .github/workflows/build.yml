@@ -10,6 +10,14 @@ permissions:
   contents: read
 
 jobs:
+  paper-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Latest published Paper API versions
+        run: |
+          curl -s https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml \
+            | grep -o '<version>[^<]*</version>' | tail -12
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -23,11 +31,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
-
-      - name: Show available Paper API versions
-        run: |
-          curl -s https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml \
-            | grep -o '<version>[^<]*</version>' | tail -25
 
       - name: Build
         run: ./gradlew build --stacktrace

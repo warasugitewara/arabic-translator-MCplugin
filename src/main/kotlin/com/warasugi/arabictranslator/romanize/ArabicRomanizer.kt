@@ -43,9 +43,9 @@ enum class RomanizationStyle {
 class ArabicRomanizer(
     private val style: RomanizationStyle = RomanizationStyle.SIMPLE,
     private val insertShortVowels: Boolean = true,
-) {
+) : Romanizer {
 
-    fun romanize(text: String): String {
+    override fun romanize(text: String): String {
         if (text.isEmpty()) return text
 
         val out = StringBuilder(text.length * 2)

@@ -3,9 +3,8 @@ rootProject.name = "ArabicTranslator"
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
-        maven("https://repo.papermc.io/repository/maven-public/") {
-            name = "papermc"
-            content { includeGroup("io.papermc.paper"); includeGroup("com.mojang"); includeGroup("io.papermc") }
-        }
+        // Paper API plus the transitive dependencies it pulls (bungeecord-chat,
+        // brigadier, adventure) that Central does not host.
+        maven("https://repo.papermc.io/repository/maven-public/") { name = "papermc" }
     }
 }
