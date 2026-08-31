@@ -31,6 +31,17 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - paper: '1.21.8-R0.1-SNAPSHOT'
+            api: '1.21'
+          - paper: '1.21.11-R0.1-SNAPSHOT'
+            api: '1.21'
+          - paper: '26.2.build.121-stable'
+            api: '26.2'
+    name: build (Paper ${{ matrix.paper }})
     steps:
       - uses: actions/checkout@v5
 
@@ -44,11 +55,4 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build
-        run: ./gradlew build --stacktrace
-
-      - name: Upload plugin jar
-        uses: actions/upload-artifact@v4
-        with:
-          name: ArabicTranslator
-          path: build/libs/ArabicTranslator-*.jar
-          if-no-files-found: error
+        run: ./gradlew build --stacktrace -PpaperApiVersion=${{ matrix.paper }} -PapiVersion=${{ matrix.api }}
