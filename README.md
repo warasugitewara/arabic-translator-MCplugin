@@ -1,6 +1,8 @@
 # ArabicTranslator | チャット翻訳プラグイン
 <img width="385" height="164" alt="{4E81D746-D01A-48AD-AE77-AA872CD49092}" src="https://github.com/user-attachments/assets/51bb201f-844d-4b4f-83c4-f60b68c3a9e5" />
 
+[![Build](https://github.com/warasugitewara/arabic-translator-MCplugin/actions/workflows/build.yml/badge.svg)](https://github.com/warasugitewara/arabic-translator-MCplugin/actions/workflows/build.yml)
+
 [English](#english) | [日本語](#japanese)
 
 ---
@@ -14,8 +16,9 @@ guide next to each translation. Arabic and Chinese ship configured; any language
 DeepL supports is a few lines of `config.yml`.
 
 > **Upgrading from 1.x?** Your `config.yml` keeps working as it is, and the separate
-> ChineseTranslator addon is no longer needed — Chinese is now a language in this
-> plugin. See [Upgrading](#upgrading).
+> [ChineseTranslator](https://github.com/warasugitewara/chinese-translator-MCplugin)
+> addon (now archived) is no longer needed — Chinese is a language in this plugin.
+> See [Upgrading](#upgrading).
 
 ### Features
 
@@ -30,9 +33,8 @@ DeepL supports is a few lines of `config.yml`.
 
 ### Requirements
 
-- Paper **1.21.x** (built and tested against 1.21.11) — or Paper **26.x**, see
-  [Which jar](#which-jar)
-- Java 21+
+- Paper **1.21.x** (built against 1.21.11) — or Paper **26.x**, see [Which jar](#which-jar)
+- Java **21** for the 1.21.x jar, Java **25** for the 26.x jar
 - A [DeepL API key](https://www.deepl.com/your-account/keys) — optional, a keyless
   free backend is enabled out of the box
 
@@ -43,17 +45,25 @@ DeepL supports is a few lines of `config.yml`.
 3. Put your DeepL key in `deepl-api-key` (keep the single quotes)
 4. `/arabic reload`, then `/arabic enable`
 
+Alongside `config.yml` the plugin writes `state.yml` (which languages are on) and
+`players.yml` (who has hidden which language). Both are safe to delete.
+
 <a id="which-jar"></a>
 
 ### Which jar
 
-Paper moved to CalVer after 1.21.11, and Paper 26.x ships Adventure 5 where 1.21.x
-ships Adventure 4. The two are not binary compatible, so there are two jars:
+Paper moved to CalVer after 1.21.11. Paper 26.x is built for Java 25 and ships
+Adventure 5, where 1.21.x is Java 21 and Adventure 4, so the plugin is published as
+one jar per line. The source is identical — only the API level and the Java target
+differ, and CI builds both on every push.
 
-| Your server | Jar |
-| --- | --- |
-| Paper 1.21.x | `ArabicTranslator-2.0.0-mc1.21.jar` |
-| Paper 26.x | `ArabicTranslator-2.0.0-mc26.jar` |
+| Your server | Jar | Java |
+| --- | --- | --- |
+| Paper 1.21.x | `ArabicTranslator-2.0.0-mc1.21.jar` | 21 |
+| Paper 26.x | `ArabicTranslator-2.0.0-mc26.jar` | 25 |
+
+Both are attached to every [Actions run](https://github.com/warasugitewara/arabic-translator-MCplugin/actions/workflows/build.yml)
+as build artifacts.
 
 ### Languages
 
@@ -131,7 +141,7 @@ permission setups written for the 1.x plugins need no changes.
 
 ### Example
 
-A player types "Hello":
+A player types "Hello", with both languages enabled:
 
 ```
 Steve: مرحبا | marahba
@@ -164,7 +174,10 @@ result pronounceable. Pinyin takes the first reading of a polyphonic character.
 ./gradlew build -Ptarget=paper26   # Paper 26.x
 ```
 
-Jars land in `build/libs/`. Requires JDK 21; Gradle comes from the wrapper.
+Jars land in `build/libs/`. Gradle comes from the wrapper, and the JDK each target
+needs (21 or 25) is downloaded automatically if it is not already installed.
+
+`./gradlew test` runs the transliteration, Pinyin and cache tests on their own.
 
 ### License
 
@@ -182,8 +195,9 @@ Bundles [pinyin4j](https://github.com/belerweb/pinyin4j) (BSD) for Hanzi reading
 アラビア語と中国語は設定済みで同梱、DeepL が対応する言語なら `config.yml` に数行
 追加するだけで増やせます。
 
-> **1.x からの更新** `config.yml` はそのまま使えます。ChineseTranslator アドオンは
-> 不要になりました（中国語はこのプラグインの一言語です）。
+> **1.x からの更新** `config.yml` はそのまま使えます。
+> [ChineseTranslator](https://github.com/warasugitewara/chinese-translator-MCplugin)
+> アドオン（アーカイブ済み）は不要になりました。中国語はこのプラグインの一言語です。
 > [1.x からの更新](#upgrading-ja) を参照してください。
 
 ### 機能
@@ -199,9 +213,9 @@ Bundles [pinyin4j](https://github.com/belerweb/pinyin4j) (BSD) for Hanzi reading
 
 ### 動作環境
 
-- Paper **1.21.x**（1.21.11 でビルド・テスト）または Paper **26.x**
+- Paper **1.21.x**（1.21.11 でビルド）または Paper **26.x**
   （[どちらの jar か](#which-jar-ja) 参照）
-- Java 21 以上
+- Java は 1.21.x 版 jar が **21**、26.x 版 jar が **25**
 - [DeepL API Key](https://www.deepl.com/ja/your-account/keys)（任意。キー不要の無料
   バックエンドが最初から有効です）
 
@@ -212,17 +226,25 @@ Bundles [pinyin4j](https://github.com/belerweb/pinyin4j) (BSD) for Hanzi reading
 3. `deepl-api-key` に DeepL の API Key を設定（**シングルクォートは外さない**）
 4. `/arabic reload` のあと `/arabic enable`
 
+`config.yml` と並んで `state.yml`（どの言語が有効か）と `players.yml`（誰がどの言語を
+非表示にしているか）が作られます。どちらも削除して問題ありません。
+
 <a id="which-jar-ja"></a>
 
 ### どちらの jar か
 
-Paper は 1.21.11 のあと CalVer に移行し、26.x は Adventure 5、1.21.x は Adventure 4
-を同梱しています。両者はバイナリ互換がないため、jar を分けています。
+Paper は 1.21.11 のあと CalVer に移行しました。26.x は Java 25 向けにビルドされ
+Adventure 5 を同梱、1.21.x は Java 21 と Adventure 4 です。そのため jar を系統ごとに
+分けています。ソースは共通で、API のバージョンと Java のターゲットだけが違います
+（CI では毎回両方をビルドしています）。
 
-| サーバー | jar |
-| --- | --- |
-| Paper 1.21.x | `ArabicTranslator-2.0.0-mc1.21.jar` |
-| Paper 26.x | `ArabicTranslator-2.0.0-mc26.jar` |
+| サーバー | jar | Java |
+| --- | --- | --- |
+| Paper 1.21.x | `ArabicTranslator-2.0.0-mc1.21.jar` | 21 |
+| Paper 26.x | `ArabicTranslator-2.0.0-mc26.jar` | 25 |
+
+どちらも [Actions の実行結果](https://github.com/warasugitewara/arabic-translator-MCplugin/actions/workflows/build.yml)
+に artifact として添付されています。
 
 ### 言語設定
 
@@ -301,7 +323,7 @@ languages:
 
 ### 表示例
 
-プレイヤーが「こんにちは」と発言した場合:
+プレイヤーが「こんにちは」と発言した場合（両言語を有効にしているとき）:
 
 ```
 Steve: مرحبا | marahba
@@ -333,7 +355,10 @@ Steve: 你好 | nǐ hǎo
 ./gradlew build -Ptarget=paper26   # Paper 26.x
 ```
 
-jar は `build/libs/` に出力されます。JDK 21 が必要で、Gradle は wrapper が入手します。
+jar は `build/libs/` に出力されます。Gradle は wrapper が入手し、ターゲットに必要な
+JDK（21 または 25）も未インストールなら自動で取得されます。
+
+`./gradlew test` で音写・ピンイン・キャッシュのテストだけを実行できます。
 
 ### ライセンス
 
