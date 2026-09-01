@@ -19,18 +19,20 @@ jobs:
           # Paper 1.21.x - the primary target and the default of a plain build.
           - target: paper121
             label: mc1.21
+            java: '21'
           # Paper 26.x (CalVer). Ships Adventure 5, so it needs its own jar.
           - target: paper26
             label: mc26
+            java: '25'
     name: build (${{ matrix.target }})
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 21
+      - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ matrix.java }}
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5

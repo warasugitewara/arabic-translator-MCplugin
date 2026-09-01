@@ -10,7 +10,6 @@ group = "com.warasugi"
 version = "2.0.0"
 description = "Real-time chat translation for Paper servers - Arabic transliteration and Chinese Pinyin"
 
-val javaVersion: String by project
 val coroutinesVersion: String by project
 val gsonVersion: String by project
 val pinyin4jVersion: String by project
@@ -21,6 +20,7 @@ val target = providers.gradleProperty("target").getOrElse("paper121")
 val paperApiVersion = property("paperApiVersion.$target") as String
 val apiVersion = property("apiVersion.$target") as String
 val paperLabel = property("label.$target") as String
+val javaVersion = property("javaVersion.$target") as String
 
 kotlin {
     jvmToolchain(javaVersion.toInt())
