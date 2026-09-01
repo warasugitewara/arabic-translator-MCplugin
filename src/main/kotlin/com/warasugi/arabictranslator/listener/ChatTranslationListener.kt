@@ -8,6 +8,7 @@
 package com.warasugi.arabictranslator.listener
 
 import com.warasugi.arabictranslator.ArabicTranslatorPlugin
+import com.warasugi.arabictranslator.language.LanguageProfile
 import com.warasugi.arabictranslator.translate.TranslationResult
 import com.warasugi.arabictranslator.util.Scripts
 import io.papermc.paper.event.player.AsyncChatEvent
@@ -27,13 +28,15 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Translates public chat and delivers the result to the players who want it.
+ * Translates public chat into every enabled language and delivers each result to
+ * the players who asked for it.
  *
  * Listening at [EventPriority.MONITOR] with `ignoreCancelled = true` means the
  * plugin observes the chat other plugins have already decided to allow, rather
  * than translating messages that are about to be cancelled. Nothing blocks here:
- * the network call runs in a coroutine and the translated line follows a moment
- * later, so a slow API never holds up chat.
+ * each language's network call runs in its own coroutine and the translated lines
+ * follow a moment later, so a slow API never holds up chat and two languages are
+ * translated side by side rather than one after the other.
  */
 class ChatTranslationListener(private val plugin: ArabicTranslatorPlugin) : Listener {
 
@@ -42,12 +45,12 @@ class ChatTranslationListener(private val plugin: ArabicTranslatorPlugin) : List
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onChat(event: AsyncChatEvent) {
         val runtime = plugin.runtime ?: return
-        if (!plugin.translationEnabled) return
+        val active = runtime.settings.languages.filter { plugin.languageState.isEnabled(it.id) }
+        if (active.isEmpty()) return
 
         val settings = runtime.settings
         val message = PLAIN.serialize(event.message()).trim()
         if (message.isEmpty() || message.length > settings.maxMessageLength) return
-        if (settings.skipAlreadyTranslated && Scripts.isMostlyArabic(message)) return
 
         val player = event.player
         if (!withinRateLimit(player.uniqueId, settings.cooldown.toMillis())) return
@@ -57,9 +60,12 @@ class ChatTranslationListener(private val plugin: ArabicTranslatorPlugin) : List
         val viewers = event.viewers().toList()
         val name = player.name
 
-        plugin.scope.launch {
-            val result = runtime.service.translate(message) ?: return@launch
-            deliver(viewers, render(name, message, result), settings.receiveByDefault)
+        for (language in active) {
+            if (settings.skipAlreadyTranslated && isAlreadyTranslated(message, language)) continue
+            plugin.scope.launch {
+                val result = runtime.service.translate(message, language) ?: return@launch
+                deliver(viewers, language, render(name, message, language, result))
+            }
         }
     }
 
@@ -68,19 +74,29 @@ class ChatTranslationListener(private val plugin: ArabicTranslatorPlugin) : List
         lastMessageAt.remove(event.player.uniqueId)
     }
 
-    private fun deliver(viewers: List<Audience>, message: Component, receiveByDefault: Boolean) {
+    /** Skips a message that is already written in the language we would translate to. */
+    private fun isAlreadyTranslated(message: String, language: LanguageProfile): Boolean {
+        val script = language.skipScript ?: return false
+        return Scripts.isMostly(message, script)
+    }
+
+    private fun deliver(viewers: List<Audience>, language: LanguageProfile, message: Component) {
         for (viewer in viewers) {
-            if (viewer is Player && !plugin.preferences.receives(viewer.uniqueId, receiveByDefault)) continue
+            if (viewer is Player && !plugin.preferences.receives(viewer.uniqueId, language)) continue
             viewer.sendMessage(message)
         }
     }
 
-    private fun render(playerName: String, original: String, result: TranslationResult): Component {
-        val settings = requireNotNull(plugin.runtime).settings
+    private fun render(
+        playerName: String,
+        original: String,
+        language: LanguageProfile,
+        result: TranslationResult,
+    ): Component {
         val template = if (result.romanization.isNullOrBlank()) {
-            settings.formatWithoutRomanization
+            language.formatWithoutRomanization
         } else {
-            settings.format
+            language.format
         }
 
         // `unparsed` placeholders: chat content can never be read back as MiniMessage tags.
@@ -90,6 +106,7 @@ class ChatTranslationListener(private val plugin: ArabicTranslatorPlugin) : List
             Placeholder.unparsed("translation", result.text),
             Placeholder.unparsed("romanization", result.romanization.orEmpty()),
             Placeholder.unparsed("provider", result.provider),
+            Placeholder.unparsed("language", language.label),
         )
         return MiniMessage.miniMessage().deserialize(template, resolver)
     }

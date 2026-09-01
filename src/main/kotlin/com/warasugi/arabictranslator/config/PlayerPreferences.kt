@@ -7,6 +7,7 @@
 
 package com.warasugi.arabictranslator.config
 
+import com.warasugi.arabictranslator.language.LanguageProfile
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.plugin.Plugin
 import java.io.File
@@ -15,33 +16,42 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Level
 
 /**
- * Remembers who wants to see translations, persisted in `players.yml`.
+ * Remembers who wants to see which language, persisted in `players.yml`.
  *
- * Server-wide translation used to be all-or-nothing; players who read the source
- * language got every line twice with no way out. Only the players who differ from
- * the configured default are stored, so the file stays tiny.
+ * Server-wide translation used to be all-or-nothing; a player who reads the source
+ * language got every line twice with no way out, and with two languages enabled,
+ * three times. Only the players who differ from a language's configured default
+ * are stored, so the file stays tiny.
  */
 class PlayerPreferences(private val plugin: Plugin) {
 
-    private val file = File(plugin.dataFolder, FILE_NAME)
-    private val overrides = ConcurrentHashMap<UUID, Boolean>()
+    private data class Key(val uuid: UUID, val languageId: String)
 
-    fun load() {
+    private val overrides = ConcurrentHashMap<Key, Boolean>()
+
+    fun load(languages: Collection<LanguageProfile>) {
         overrides.clear()
         if (!file.exists()) return
 
         val yaml = YamlConfiguration.loadConfiguration(file)
-        yaml.getStringList(RECEIVING).mapNotNull(::parseUuid).forEach { overrides[it] = true }
-        yaml.getStringList(NOT_RECEIVING).mapNotNull(::parseUuid).forEach { overrides[it] = false }
+        languages.forEach { language ->
+            yaml.getStringList("${language.id}.$RECEIVING")
+                .mapNotNull(::parseUuid)
+                .forEach { overrides[Key(it, language.id)] = true }
+            yaml.getStringList("${language.id}.$NOT_RECEIVING")
+                .mapNotNull(::parseUuid)
+                .forEach { overrides[Key(it, language.id)] = false }
+        }
     }
 
-    /** @param default the `display.players-receive-by-default` setting currently in force */
-    fun receives(uuid: UUID, default: Boolean): Boolean = overrides[uuid] ?: default
+    fun receives(uuid: UUID, language: LanguageProfile): Boolean =
+        overrides[Key(uuid, language.id)] ?: language.receiveByDefault
 
-    /** Flips [uuid]'s choice and returns the new state. */
-    fun toggle(uuid: UUID, default: Boolean): Boolean {
-        val next = !receives(uuid, default)
-        if (next == default) overrides.remove(uuid) else overrides[uuid] = next
+    /** Flips [uuid]'s choice for one language and returns the new state. */
+    fun toggle(uuid: UUID, language: LanguageProfile): Boolean {
+        val key = Key(uuid, language.id)
+        val next = !receives(uuid, language)
+        if (next == language.receiveByDefault) overrides.remove(key) else overrides[key] = next
         save()
         return next
     }
@@ -50,12 +60,20 @@ class PlayerPreferences(private val plugin: Plugin) {
         val yaml = YamlConfiguration()
         yaml.options().setHeader(
             listOf(
-                "Per-player translation display choices, written by /arabic toggle.",
-                "Players missing from both lists follow display.players-receive-by-default.",
+                "Per-player translation display choices, written by the toggle command.",
+                "Players missing from both lists follow players-receive-by-default.",
             ),
         )
-        yaml.set(RECEIVING, overrides.filterValues { it }.keys.map(UUID::toString))
-        yaml.set(NOT_RECEIVING, overrides.filterValues { !it }.keys.map(UUID::toString))
+        overrides.entries.groupBy { it.key.languageId }.forEach { (languageId, entries) ->
+            yaml.set(
+                "$languageId.$RECEIVING",
+                entries.filter { it.value }.map { it.key.uuid.toString() },
+            )
+            yaml.set(
+                "$languageId.$NOT_RECEIVING",
+                entries.filterNot { it.value }.map { it.key.uuid.toString() },
+            )
+        }
 
         try {
             plugin.dataFolder.mkdirs()
@@ -64,6 +82,8 @@ class PlayerPreferences(private val plugin: Plugin) {
             plugin.logger.log(Level.WARNING, "Could not save $FILE_NAME", e)
         }
     }
+
+    private val file: File get() = File(plugin.dataFolder, FILE_NAME)
 
     private fun parseUuid(raw: String): UUID? = runCatching { UUID.fromString(raw) }.getOrNull()
 

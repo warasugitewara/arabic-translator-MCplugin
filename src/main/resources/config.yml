@@ -1,6 +1,7 @@
 # ===========================================================================
 #  ArabicTranslator
-#  Translates public chat into Arabic and shows a Latin transliteration.
+#  Translates public chat into one or more languages and shows a
+#  pronunciation guide next to each translation.
 #  Docs: https://github.com/warasugitewara/arabic-translator-MCplugin
 # ===========================================================================
 
@@ -14,10 +15,69 @@ deepl-api-key: 'your-deepl-api-key-here'
 # Override with 'free' or 'pro' only if you know you need to.
 deepl-api-version: 'auto'
 
-# Whether translation is on the first time the plugin starts. Afterwards
-# /arabic enable and /arabic disable remember the choice in state.yml, so this
-# file (and its comments) is never rewritten.
-translation-enabled: false
+# --- Languages -------------------------------------------------------------
+# Every entry here gets its own /<name> command and its own on/off state.
+# Add a language by copying a block; there is nothing else to install.
+#
+#   enabled      load this language at all (a disabled one costs nothing)
+#   code         language code sent to the backend (DeepL: AR, ZH, JA, KO, ...)
+#   aliases      extra command names
+#   romanization arabic | pinyin | none
+#   skip-script  Unicode script that means "already translated", or none
+#   translation-enabled  state on first start; the enable/disable commands
+#                        remember later changes in state.yml, so this file
+#                        (and its comments) is never rewritten
+languages:
+
+  arabic:
+    enabled: true
+    label: 'Arabic'
+    code: 'AR'
+    aliases: [ 'ar' ]
+    translation-enabled: false
+    players-receive-by-default: true
+
+    romanization: 'arabic'
+    # simple   - plain ASCII, renders in every Minecraft font
+    # academic - ALA-LC diacritics (ḥ, ṣ, ā, ʿ); needs a font that has them
+    romanization-style: 'simple'
+    # Break up consonant clusters with a default 'a' so the transliteration can
+    # actually be read out loud ("marahba" instead of "mrhb").
+    insert-short-vowels: true
+    skip-script: 'ARABIC'
+
+    # MiniMessage. Placeholders: <player> <message> <translation>
+    # <romanization> <provider> <language>. https://docs.advntr.dev/minimessage/
+    format: '<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple><gray> | </gray><yellow><italic><romanization></italic></yellow>'
+    format-without-romanization: '<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple>'
+
+  chinese:
+    enabled: false
+    label: 'Chinese'
+    code: 'ZH'
+    aliases: [ 'ct', 'zh' ]
+    translation-enabled: false
+    players-receive-by-default: true
+
+    romanization: 'pinyin'
+    # marks   - nǐ hǎo   (diacritics; Minecraft's font has these glyphs)
+    # numbers - ni3 hao3 (easiest to type and to search for)
+    # none    - ni hao
+    tone-style: 'marks'
+    skip-script: 'HAN'
+
+    format: '<white><player></white><gray>: </gray><aqua><bold><translation></bold></aqua><gray> | </gray><yellow><italic><romanization></italic></yellow>'
+    format-without-romanization: '<white><player></white><gray>: </gray><aqua><bold><translation></bold></aqua>'
+
+  # A language with no romanization system of its own - just switch it on.
+  # japanese:
+  #   enabled: false
+  #   label: 'Japanese'
+  #   code: 'JA'
+  #   aliases: [ 'ja' ]
+  #   romanization: 'none'
+  #   skip-script: 'HIRAGANA'
+  #   format: '<white><player></white><gray>: </gray><green><translation></green>'
 
 # --- Translation backends --------------------------------------------------
 # Tried top to bottom. A backend that is unconfigured, rate limited or out of
@@ -50,7 +110,6 @@ providers:
 
 # --- Translation behaviour -------------------------------------------------
 translation:
-  target-language: 'AR'
   # 'auto' lets the backend detect what players are typing.
   source-language: 'auto'
   # Longer messages are left alone; they are usually pasted spam.
@@ -58,32 +117,17 @@ translation:
   timeout-seconds: 8
   # Minimum gap between two translated messages from the same player.
   cooldown-millis: 750
-  # Skip messages that are already Arabic instead of round-tripping them.
+  # Skip a message already written in a language's own script, instead of
+  # round-tripping it. Uses each language's skip-script.
   skip-translated-messages: true
 
 # --- Cache -----------------------------------------------------------------
 # Repeated lines are answered from memory and never hit the network, which is
-# what keeps the free quotas usable on a busy server.
+# what keeps the free quotas usable on a busy server. Shared by all languages;
+# entries are keyed per target language.
 cache:
   max-entries: 1000
   expire-minutes: 60
-
-# --- Display ---------------------------------------------------------------
-display:
-  romanization: true
-  # simple   - plain ASCII, renders in every Minecraft font
-  # academic - ALA-LC diacritics (ḥ, ṣ, ā, ʿ); needs a font that has them
-  romanization-style: 'simple'
-  # Break up consonant clusters with a default 'a' so the transliteration can
-  # actually be read out loud ("marahba" instead of "mrhb").
-  insert-short-vowels: true
-  # Whether players see translations before touching /arabic toggle.
-  players-receive-by-default: true
-
-  # MiniMessage format. Placeholders: <player> <message> <translation>
-  # <romanization> <provider>. See https://docs.advntr.dev/minimessage/
-  format: '<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple><gray> | </gray><yellow><italic><romanization></italic></yellow>'
-  format-without-romanization: '<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple>'
 
 # Logs every cache hit, request and response. Noisy - only for troubleshooting.
 debug: false

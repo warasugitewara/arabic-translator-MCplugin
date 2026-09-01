@@ -7,7 +7,7 @@
 
 package com.warasugi.arabictranslator.translate
 
-import com.warasugi.arabictranslator.romanize.Romanizer
+import com.warasugi.arabictranslator.language.LanguageProfile
 import com.warasugi.arabictranslator.translate.provider.TranslationException
 import com.warasugi.arabictranslator.translate.provider.TranslationProvider
 import com.warasugi.arabictranslator.translate.provider.TranslationRequest
@@ -33,8 +33,6 @@ import java.util.logging.Logger
 class TranslationService(
     private val providers: List<TranslationProvider>,
     private val cache: TranslationCache,
-    private val romanizer: Romanizer?,
-    private val targetLanguage: String,
     private val sourceLanguage: String?,
     private val scope: CoroutineScope,
     private val logger: Logger,
@@ -50,25 +48,33 @@ class TranslationService(
 
     val providerIds: List<String> get() = providers.filter { it.isConfigured }.map { it.id }
 
-    suspend fun translate(rawText: String): TranslationResult? {
+    suspend fun translate(rawText: String, language: LanguageProfile): TranslationResult? {
         val text = rawText.trim()
         if (text.isEmpty()) return null
 
-        cache[text]?.let {
-            if (debug) logger.info("Cache hit for \"$text\"")
+        // One cache and one in-flight map for every language; the key carries the
+        // target so "hello" in Arabic never returns the Chinese entry.
+        val key = "${language.code}\u0000$text"
+
+        cache[key]?.let {
+            if (debug) logger.info("Cache hit for ${language.id} \"$text\"")
             return it
         }
 
-        val deferred = inFlight.computeIfAbsent(text) { key -> scope.async { runProviders(key) } }
+        val deferred = inFlight.computeIfAbsent(key) { scope.async { runProviders(text, language, key) } }
         return try {
             deferred.await()
         } finally {
-            inFlight.remove(text, deferred)
+            inFlight.remove(key, deferred)
         }
     }
 
-    private suspend fun runProviders(text: String): TranslationResult? {
-        val request = TranslationRequest(text, targetLanguage, sourceLanguage)
+    private suspend fun runProviders(
+        text: String,
+        language: LanguageProfile,
+        cacheKey: String,
+    ): TranslationResult? {
+        val request = TranslationRequest(text, language.code, sourceLanguage)
         val failures = mutableListOf<String>()
 
         for (provider in providers) {
@@ -87,11 +93,11 @@ class TranslationService(
 
                 val result = TranslationResult(
                     text = translated,
-                    romanization = romanizer?.romanize(translated)?.takeIf(String::isNotBlank),
+                    romanization = language.romanizer?.romanize(translated)?.takeIf(String::isNotBlank),
                     provider = provider.id,
                 )
-                cache[text] = result
-                if (debug) logger.info("Translated \"$text\" via ${provider.id} -> \"$translated\"")
+                cache[cacheKey] = result
+                if (debug) logger.info("Translated \"$text\" to ${language.id} via ${provider.id} -> \"$translated\"")
                 return result
             } catch (e: CancellationException) {
                 throw e
@@ -104,7 +110,10 @@ class TranslationService(
             }
         }
 
-        logger.warning("Translation failed for \"${text.take(60)}\" - ${failures.joinToString("; ").ifEmpty { "no provider is configured" }}")
+        logger.warning(
+            "Translation to ${language.id} failed for \"${text.take(60)}\" - " +
+                failures.joinToString("; ").ifEmpty { "no provider is configured" },
+        )
         return null
     }
 

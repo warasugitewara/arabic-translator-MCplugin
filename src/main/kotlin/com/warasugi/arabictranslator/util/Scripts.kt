@@ -11,13 +11,16 @@ package com.warasugi.arabictranslator.util
 object Scripts {
 
     /**
-     * `true` when at least [threshold] of the letters in [text] are Arabic script.
+     * `true` when at least [threshold] of the letters in [text] are in [script].
      *
-     * Re-translating Arabic into Arabic burns quota and produces noise, so the
-     * chat listener uses this to leave such messages alone.
+     * Re-translating Arabic into Arabic burns quota and produces noise, so the chat
+     * listener uses this to leave already-translated messages alone. Counting only
+     * letters keeps punctuation and digits from skewing short messages, and mixed
+     * scripts stay below the threshold: Japanese is not mistaken for Chinese
+     * because its kana count as letters but not as Han.
      */
-    fun isMostlyArabic(text: String, threshold: Double = 0.5): Boolean =
-        isMostly(text, threshold) { Character.UnicodeScript.of(it) == Character.UnicodeScript.ARABIC }
+    fun isMostly(text: String, script: Character.UnicodeScript, threshold: Double = 0.5): Boolean =
+        isMostly(text, threshold) { Character.UnicodeScript.of(it) == script }
 
     private inline fun isMostly(text: String, threshold: Double, predicate: (Int) -> Boolean): Boolean {
         var letters = 0

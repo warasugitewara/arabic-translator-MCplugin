@@ -12,6 +12,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.tree.LiteralCommandNode
 import com.warasugi.arabictranslator.ArabicTranslatorPlugin
+import com.warasugi.arabictranslator.language.LanguageProfile
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
 import net.kyori.adventure.text.Component
@@ -21,62 +22,59 @@ import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.entity.Player
 
 /**
- * The `/arabic` command tree, built on Paper's Brigadier API.
+ * One command per configured language, built on Paper's Brigadier API.
  *
- * Brigadier replaces the hand-rolled `TabCompleter` and the manual permission
- * checks of the 1.x command: every node declares its own permission, so players
- * are never offered a subcommand they cannot run, and unknown input is rejected by
- * the parser with the error underlined in place.
+ * `/arabic` and `/chinese` behave exactly as the two separate plugins did, but
+ * they are now the same code driven by a [LanguageProfile], so a language added to
+ * `config.yml` gets its command for free. Brigadier replaces the hand-rolled
+ * `TabCompleter` and the manual permission checks: every node declares its own
+ * permission, so players are never offered a subcommand they cannot run, and
+ * unknown input is rejected by the parser with the error underlined in place.
  */
-class TranslatorCommand(private val plugin: ArabicTranslatorPlugin) {
+class TranslatorCommand(
+    private val plugin: ArabicTranslatorPlugin,
+    private val language: LanguageProfile,
+) {
+
+    val aliases: List<String> get() = language.aliases
+
+    val description: String get() = "Control real-time ${language.label} chat translation"
 
     fun build(): LiteralCommandNode<CommandSourceStack> =
-        Commands.literal(NAME)
-            .requires { it.sender.hasPermission("arabic.help") }
+        Commands.literal(language.id)
+            .requires { it.sender.hasPermission("translator.help") }
             .executes(::showHelp)
-            .then(
-                literal("enable", "arabic.enable") { context ->
-                    val runtime = plugin.runtime
-                    if (runtime == null || !runtime.service.hasUsableProvider) {
-                        context.source.sender.sendMessage(
-                            error(
-                                "No translation backend is usable. Set `deepl-api-key` in config.yml, " +
-                                    "or enable a keyless provider under `providers`, then run /arabic reload.",
-                            ),
-                        )
-                        return@literal
-                    }
-                    plugin.setTranslationEnabled(true)
-                    plugin.server.broadcast(
-                        success("Arabic translation enabled (${runtime.service.providerIds.joinToString(" > ")})"),
-                    )
-                },
-            )
-            .then(
-                literal("disable", "arabic.disable") {
-                    plugin.setTranslationEnabled(false)
-                    plugin.server.broadcast(warning("Arabic translation disabled"))
-                },
-            )
-            .then(literal("status", "arabic.status", ::showStatus))
-            .then(literal("toggle", "arabic.toggle", ::toggleForPlayer))
-            .then(
-                literal("reload", "arabic.reload") { context ->
-                    val sender = context.source.sender
-                    runCatching { plugin.reloadRuntime() }
-                        .onSuccess {
-                            sender.sendMessage(success("Configuration reloaded, caches cleared"))
-                        }
-                        .onFailure { failure ->
-                            sender.sendMessage(error("Reload failed: ${failure.message}"))
-                            plugin.logger.warning("Reload failed: ${failure.message}")
-                        }
-                },
-            )
-            .then(literal("help", "arabic.help") { showHelp(it) })
+            .then(literal("enable", "translator.enable", ::enable))
+            .then(literal("disable", "translator.disable", ::disable))
+            .then(literal("status", "translator.status", ::showStatus))
+            .then(literal("toggle", "translator.toggle", ::toggleForPlayer))
+            .then(literal("reload", "translator.reload", ::reload))
+            .then(literal("help", "translator.help") { showHelp(it) })
             .build()
 
     // -- subcommands --------------------------------------------------------
+
+    private fun enable(context: CommandContext<CommandSourceStack>) {
+        val runtime = plugin.runtime
+        if (runtime == null || !runtime.service.hasUsableProvider) {
+            context.source.sender.sendMessage(
+                error(
+                    "No translation backend is usable. Set `deepl-api-key` in config.yml, " +
+                        "or enable a keyless provider under `providers`, then reload.",
+                ),
+            )
+            return
+        }
+        plugin.languageState.set(language.id, true)
+        plugin.server.broadcast(
+            success("${language.label} translation enabled (${runtime.service.providerIds.joinToString(" > ")})"),
+        )
+    }
+
+    private fun disable(context: CommandContext<CommandSourceStack>) {
+        plugin.languageState.set(language.id, false)
+        plugin.server.broadcast(warning("${language.label} translation disabled"))
+    }
 
     private fun showStatus(context: CommandContext<CommandSourceStack>) {
         val sender = context.source.sender
@@ -88,17 +86,20 @@ class TranslatorCommand(private val plugin: ArabicTranslatorPlugin) {
 
         val stats = runtime.service.cacheStats()
         sender.sendMessage(header("ArabicTranslator"))
-        sender.sendMessage(field("Translation", if (plugin.translationEnabled) "enabled" else "disabled"))
-        sender.sendMessage(field("Target language", runtime.settings.targetLanguage))
         sender.sendMessage(
             field("Providers", runtime.service.providerIds.joinToString(" > ").ifEmpty { "none configured" }),
         )
         sender.sendMessage(
             field("Cache", "${stats.size}/${stats.capacity} entries, ${"%.0f".format(stats.hitRate * 100)}% hit rate"),
         )
-        if (sender is Player) {
-            val receiving = plugin.preferences.receives(sender.uniqueId, runtime.settings.receiveByDefault)
-            sender.sendMessage(field("You receive translations", if (receiving) "yes" else "no"))
+        for (profile in runtime.settings.languages) {
+            val state = if (plugin.languageState.isEnabled(profile.id)) "enabled" else "disabled"
+            val mine = when {
+                sender !is Player -> ""
+                plugin.preferences.receives(sender.uniqueId, profile) -> ", shown to you"
+                else -> ", hidden from you"
+            }
+            sender.sendMessage(field("${profile.label} (${profile.code})", "$state$mine"))
         }
     }
 
@@ -108,23 +109,46 @@ class TranslatorCommand(private val plugin: ArabicTranslatorPlugin) {
             sender.sendMessage(error("Only a player can toggle their own translation display"))
             return
         }
-        val default = plugin.runtime?.settings?.receiveByDefault ?: true
-        val receiving = plugin.preferences.toggle(sender.uniqueId, default)
+        val receiving = plugin.preferences.toggle(sender.uniqueId, language)
         sender.sendMessage(
-            if (receiving) success("You will now see translated chat") else warning("Translated chat hidden for you"),
+            if (receiving) {
+                success("You will now see ${language.label} translations")
+            } else {
+                warning("${language.label} translations hidden for you")
+            },
         )
+    }
+
+    private fun reload(context: CommandContext<CommandSourceStack>) {
+        val sender = context.source.sender
+        runCatching { plugin.reloadRuntime() }
+            .onSuccess {
+                sender.sendMessage(success("Configuration reloaded, caches cleared"))
+                sender.sendMessage(
+                    field("Languages", plugin.runtime?.settings?.languages.orEmpty().joinToString { it.label }),
+                )
+                if (plugin.commandsNeedRestart) {
+                    sender.sendMessage(
+                        note("Language commands change only on a server restart; the rest is live"),
+                    )
+                }
+            }
+            .onFailure { failure ->
+                sender.sendMessage(error("Reload failed: ${failure.message}"))
+                plugin.logger.warning("Reload failed: ${failure.message}")
+            }
     }
 
     private fun showHelp(context: CommandContext<CommandSourceStack>): Int {
         val sender = context.source.sender
-        sender.sendMessage(header("ArabicTranslator commands"))
+        sender.sendMessage(header("/${language.id} - ${language.label} translation"))
         HELP.forEach { (usage, description) ->
             sender.sendMessage(
-                Component.text("  /$NAME ", NamedTextColor.GRAY)
+                Component.text("  /${language.id} ", NamedTextColor.GRAY)
                     .append(Component.text(usage, NamedTextColor.YELLOW))
                     .append(Component.text(" - ", NamedTextColor.DARK_GRAY))
                     .append(Component.text(description, NamedTextColor.GRAY))
-                    .clickEvent(ClickEvent.suggestCommand("/$NAME $usage")),
+                    .clickEvent(ClickEvent.suggestCommand("/${language.id} $usage")),
             )
         }
         return Command.SINGLE_SUCCESS
@@ -145,13 +169,12 @@ class TranslatorCommand(private val plugin: ArabicTranslatorPlugin) {
             }
 
     private companion object {
-        const val NAME = "arabic"
 
         val HELP = listOf(
-            "enable" to "Turn translation on for the whole server",
-            "disable" to "Turn translation off",
-            "status" to "Show state, providers and cache statistics",
-            "toggle" to "Show or hide translated chat for yourself",
+            "enable" to "Turn this language on for the whole server",
+            "disable" to "Turn this language off",
+            "status" to "Show every language, providers and cache statistics",
+            "toggle" to "Show or hide these translations for yourself",
             "reload" to "Re-read config.yml",
             "help" to "Show this help",
         )
@@ -168,5 +191,7 @@ class TranslatorCommand(private val plugin: ArabicTranslatorPlugin) {
         fun warning(text: String): Component = Component.text("✗ $text", NamedTextColor.RED)
 
         fun error(text: String): Component = Component.text(text, NamedTextColor.RED)
+
+        fun note(text: String): Component = Component.text("· $text", NamedTextColor.GRAY)
     }
 }

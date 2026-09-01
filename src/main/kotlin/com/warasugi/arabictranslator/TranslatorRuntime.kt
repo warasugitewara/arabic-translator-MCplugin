@@ -8,7 +8,6 @@
 package com.warasugi.arabictranslator
 
 import com.warasugi.arabictranslator.config.PluginSettings
-import com.warasugi.arabictranslator.romanize.ArabicRomanizer
 import com.warasugi.arabictranslator.translate.TranslationCache
 import com.warasugi.arabictranslator.translate.TranslationService
 import com.warasugi.arabictranslator.translate.provider.DeepLProvider
@@ -23,8 +22,11 @@ import java.util.logging.Logger
 /**
  * Everything derived from one reading of `config.yml`.
  *
- * `/arabic reload` builds a brand new instance and closes the old one, so a reload
- * can never leave the plugin half-configured and cannot leak the HTTP client.
+ * A reload builds a brand new instance and closes the old one, so it can never
+ * leave the plugin half-configured and cannot leak the HTTP client. Every language
+ * shares one provider chain, one HTTP client and one cache; only the target code
+ * and the romanizer differ, which is what the two separate plugins used to
+ * duplicate wholesale.
  */
 class TranslatorRuntime private constructor(
     val settings: PluginSettings,
@@ -83,9 +85,6 @@ class TranslatorRuntime private constructor(
             val service = TranslationService(
                 providers = settings.providerOrder.mapNotNull(available::get),
                 cache = TranslationCache(settings.cacheMaxEntries, settings.cacheTtl.toMillis()),
-                romanizer = ArabicRomanizer(settings.romanizationStyle, settings.insertShortVowels)
-                    .takeIf { settings.romanizationEnabled },
-                targetLanguage = settings.targetLanguage,
                 sourceLanguage = settings.sourceLanguage,
                 scope = scope,
                 logger = logger,

@@ -7,7 +7,7 @@
 
 package com.warasugi.arabictranslator.config
 
-import com.warasugi.arabictranslator.romanize.RomanizationStyle
+import com.warasugi.arabictranslator.language.LanguageProfile
 import com.warasugi.arabictranslator.translate.provider.DeepLProvider
 import org.bukkit.configuration.file.FileConfiguration
 import java.time.Duration
@@ -16,8 +16,8 @@ import java.time.Duration
  * An immutable snapshot of `config.yml`.
  *
  * Reading the file once into a value object keeps the hot chat path free of YAML
- * lookups and means a `/arabic reload` swaps a whole consistent configuration in
- * one go instead of mutating live objects half way through a translation.
+ * lookups and means a reload swaps a whole consistent configuration in one go
+ * instead of mutating live objects half way through a translation.
  *
  * The DeepL keys stay at the top level under their 1.x names, so configs written
  * by the previous release keep working untouched.
@@ -34,8 +34,6 @@ data class PluginSettings(
     val libreEndpoint: String,
     val libreApiKey: String,
     val providerOrder: List<String>,
-    val enabledOnStart: Boolean,
-    val targetLanguage: String,
     val sourceLanguage: String?,
     val maxMessageLength: Int,
     val requestTimeout: Duration,
@@ -43,29 +41,17 @@ data class PluginSettings(
     val skipAlreadyTranslated: Boolean,
     val cacheMaxEntries: Int,
     val cacheTtl: Duration,
-    val romanizationEnabled: Boolean,
-    val romanizationStyle: RomanizationStyle,
-    val insertShortVowels: Boolean,
-    val receiveByDefault: Boolean,
-    val format: String,
-    val formatWithoutRomanization: String,
+    val languages: List<LanguageProfile>,
     val debug: Boolean,
 ) {
 
     companion object {
-        const val DEFAULT_FORMAT =
-            "<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple>" +
-                "<gray> | </gray><yellow><italic><romanization></italic></yellow>"
-
-        const val DEFAULT_FORMAT_PLAIN =
-            "<white><player></white><gray>: </gray><light_purple><bold><translation></bold></light_purple>"
 
         fun from(config: FileConfiguration): PluginSettings = PluginSettings(
             // Legacy top-level keys - do not move, 1.x configs rely on them.
             deepLApiKey = config.getString("deepl-api-key").orEmpty().unquote(),
             deepLTier = DeepLProvider.Tier.fromString(config.getString("deepl-api-version", "auto")),
             deepLEndpoint = config.getString("providers.deepl.endpoint")?.trim()?.ifBlank { null },
-            enabledOnStart = config.getBoolean("translation-enabled", false),
 
             myMemoryEnabled = config.getBoolean("providers.mymemory.enabled", true),
             myMemoryEmail = config.getString("providers.mymemory.email").orEmpty().unquote(),
@@ -87,7 +73,6 @@ data class PluginSettings(
                 .filter { it.isNotEmpty() }
                 .ifEmpty { listOf("deepl", "mymemory", "libretranslate") },
 
-            targetLanguage = config.getString("translation.target-language", "AR")!!.trim(),
             sourceLanguage = config.getString("translation.source-language", "auto")
                 ?.trim()
                 ?.takeUnless { it.isEmpty() || it.equals("auto", ignoreCase = true) },
@@ -101,18 +86,32 @@ data class PluginSettings(
             cacheMaxEntries = config.getInt("cache.max-entries", 1_000).coerceIn(0, 100_000),
             cacheTtl = Duration.ofMinutes(config.getLong("cache.expire-minutes", 60L).coerceIn(1L, 10_080L)),
 
-            romanizationEnabled = config.getBoolean("display.romanization", true),
-            romanizationStyle = RomanizationStyle.fromString(config.getString("display.romanization-style", "simple")),
-            insertShortVowels = config.getBoolean("display.insert-short-vowels", true),
-            receiveByDefault = config.getBoolean("display.players-receive-by-default", true),
-            format = config.getString("display.format", DEFAULT_FORMAT)!!,
-            formatWithoutRomanization = config.getString(
-                "display.format-without-romanization",
-                DEFAULT_FORMAT_PLAIN,
-            )!!,
+            languages = readLanguages(config),
 
             debug = config.getBoolean("debug", false),
         )
+
+        /**
+         * Reads every entry under `languages:`, skipping the ones switched off.
+         *
+         * A 1.x config has no `languages:` section at all, so Arabic is synthesised
+         * from the old top-level keys and such a server keeps translating after the
+         * upgrade without anyone editing anything.
+         */
+        private fun readLanguages(config: FileConfiguration): List<LanguageProfile> {
+            val legacyEnabled = config.getBoolean("translation-enabled", false)
+            val section = config.getConfigurationSection("languages")
+                ?: return listOf(LanguageProfile.legacyArabic(legacyEnabled))
+
+            return section.getKeys(false).mapNotNull { id ->
+                section.getConfigurationSection(id)?.let { entry ->
+                    // The 1.x top-level flag is the startup default for Arabic.
+                    LanguageProfile.from(id, entry, defaultEnabled = legacyEnabled && id == ARABIC_ID)
+                }
+            }
+        }
+
+        private const val ARABIC_ID = "arabic"
 
         /**
          * Strips quotes a user wrapped around a value.

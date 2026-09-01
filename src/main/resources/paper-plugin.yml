@@ -8,31 +8,44 @@ authors:
 website: https://github.com/warasugitewara/arabic-translator-MCplugin
 
 permissions:
-  arabic.help:
-    description: Use /arabic and see the help
+  translator.help:
+    description: Use the language commands and see the help
     default: true
-  arabic.status:
+  translator.status:
     description: Check translation status
     default: true
-  arabic.toggle:
-    description: Show or hide translated chat for yourself
+  translator.toggle:
+    description: Show or hide translations for yourself
     default: true
-  arabic.enable:
-    description: Turn translation on server-wide
+  translator.enable:
+    description: Turn a language on server-wide
     default: op
-  arabic.disable:
-    description: Turn translation off server-wide
+  translator.disable:
+    description: Turn a language off server-wide
     default: op
-  arabic.reload:
+  translator.reload:
     description: Reload config.yml
     default: op
-  arabic.*:
+  translator.*:
     description: Every ArabicTranslator permission
     default: op
     children:
-      arabic.help: true
-      arabic.status: true
-      arabic.toggle: true
-      arabic.enable: true
-      arabic.disable: true
-      arabic.reload: true
+      translator.help: true
+      translator.status: true
+      translator.toggle: true
+      translator.enable: true
+      translator.disable: true
+      translator.reload: true
+
+  # Kept so permission setups written for the 1.x plugins keep working after the
+  # two were merged into one.
+  arabic.*:
+    description: Legacy alias for translator.*
+    default: op
+    children:
+      translator.*: true
+  chinese.*:
+    description: Legacy alias for translator.*
+    default: op
+    children:
+      translator.*: true
