@@ -55,4 +55,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build
-        run: ./gradlew build --stacktrace -PpaperApiVersion=${{ matrix.paper }} -PapiVersion=${{ matrix.api }}
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew build --console=plain -PpaperApiVersion=${{ matrix.paper }} -PapiVersion=${{ matrix.api }} 2>&1 \
+            | grep -vE '^\s+at ' | tail -80
