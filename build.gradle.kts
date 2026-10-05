@@ -16,7 +16,7 @@ val pinyin4jVersion: String by project
 val junitVersion: String by project
 
 // Paper target, selected with -Ptarget=paper121 | paper26 (see gradle.properties).
-val target = providers.gradleProperty("target").getOrElse("paper121")
+val target = providers.gradleProperty("target").getOrElse("paper26")
 val paperApiVersion = property("paperApiVersion.$target") as String
 val apiVersion = property("apiVersion.$target") as String
 val paperLabel = property("label.$target") as String

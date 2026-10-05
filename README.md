@@ -33,14 +33,14 @@ DeepL supports is a few lines of `config.yml`.
 
 ### Requirements
 
-- Paper **1.21.x** (built against 1.21.11) — or Paper **26.x**, see [Which jar](#which-jar)
-- Java **21** for the 1.21.x jar, Java **25** for the 26.x jar
+- Paper **26.2** (built against 26.2) — or Paper **1.21.x**, see [Which jar](#which-jar)
+- Java **25** for the 26.2 jar, Java **21** for the 1.21.x jar
 - A [DeepL API key](https://www.deepl.com/your-account/keys) — optional, a keyless
   free backend is enabled out of the box
 
 ### Installation
 
-1. Drop `ArabicTranslator-2.0.0-mc1.21.jar` into your server's `plugins/` folder
+1. Drop `ArabicTranslator-2.0.0-mc26.jar` into your server's `plugins/` folder
 2. Start the server once to generate `plugins/ArabicTranslator/config.yml`
 3. Put your DeepL key in `deepl-api-key` (keep the single quotes)
 4. `/arabic reload`, then `/arabic enable`
@@ -52,15 +52,16 @@ Alongside `config.yml` the plugin writes `state.yml` (which languages are on) an
 
 ### Which jar
 
-Paper moved to CalVer after 1.21.11. Paper 26.x is built for Java 25 and ships
+Paper moved to CalVer after 1.21.11. Paper 26.2 is built for Java 25 and ships
 Adventure 5, where 1.21.x is Java 21 and Adventure 4, so the plugin is published as
-one jar per line. The source is identical — only the API level and the Java target
+one jar per line. Paper 26.1.x still ships Adventure 4, so the 26.2 jar is meant for
+26.2 servers only. The source is identical — only the API level and the Java target
 differ, and CI builds both on every push.
 
 | Your server | Jar | Java |
 | --- | --- | --- |
+| Paper 26.2 | `ArabicTranslator-2.0.0-mc26.jar` | 25 |
 | Paper 1.21.x | `ArabicTranslator-2.0.0-mc1.21.jar` | 21 |
-| Paper 26.x | `ArabicTranslator-2.0.0-mc26.jar` | 25 |
 
 Both are attached to every [Actions run](https://github.com/warasugitewara/arabic-translator-MCplugin/actions/workflows/build.yml)
 as build artifacts.
@@ -170,12 +171,12 @@ result pronounceable. Pinyin takes the first reading of a polyphonic character.
 ### Building from source
 
 ```bash
-./gradlew build                    # Paper 1.21.x (default)
-./gradlew build -Ptarget=paper26   # Paper 26.x
+./gradlew build                     # Paper 26.2 (default)
+./gradlew build -Ptarget=paper121   # Paper 1.21.x
 ```
 
 Jars land in `build/libs/`. Gradle comes from the wrapper, and the JDK each target
-needs (21 or 25) is downloaded automatically if it is not already installed.
+needs (25 or 21) is downloaded automatically if it is not already installed.
 
 `./gradlew test` runs the transliteration, Pinyin and cache tests on their own.
 
@@ -213,15 +214,15 @@ Bundles [pinyin4j](https://github.com/belerweb/pinyin4j) (BSD) for Hanzi reading
 
 ### 動作環境
 
-- Paper **1.21.x**（1.21.11 でビルド）または Paper **26.x**
+- Paper **26.2**（26.2 でビルド）または Paper **1.21.x**
   （[どちらの jar か](#which-jar-ja) 参照）
-- Java は 1.21.x 版 jar が **21**、26.x 版 jar が **25**
+- Java は 26.2 版 jar が **25**、1.21.x 版 jar が **21**
 - [DeepL API Key](https://www.deepl.com/ja/your-account/keys)（任意。キー不要の無料
   バックエンドが最初から有効です）
 
 ### インストール
 
-1. `ArabicTranslator-2.0.0-mc1.21.jar` をサーバーの `plugins/` に配置
+1. `ArabicTranslator-2.0.0-mc26.jar` をサーバーの `plugins/` に配置
 2. サーバーを一度起動して `plugins/ArabicTranslator/config.yml` を生成
 3. `deepl-api-key` に DeepL の API Key を設定（**シングルクォートは外さない**）
 4. `/arabic reload` のあと `/arabic enable`
@@ -233,15 +234,16 @@ Bundles [pinyin4j](https://github.com/belerweb/pinyin4j) (BSD) for Hanzi reading
 
 ### どちらの jar か
 
-Paper は 1.21.11 のあと CalVer に移行しました。26.x は Java 25 向けにビルドされ
+Paper は 1.21.11 のあと CalVer に移行しました。26.2 は Java 25 向けにビルドされ
 Adventure 5 を同梱、1.21.x は Java 21 と Adventure 4 です。そのため jar を系統ごとに
-分けています。ソースは共通で、API のバージョンと Java のターゲットだけが違います
+分けています。Paper 26.1.x はまだ Adventure 4 なので、26.2 版 jar は 26.2 サーバー専用です。
+ソースは共通で、API のバージョンと Java のターゲットだけが違います
 （CI では毎回両方をビルドしています）。
 
 | サーバー | jar | Java |
 | --- | --- | --- |
+| Paper 26.2 | `ArabicTranslator-2.0.0-mc26.jar` | 25 |
 | Paper 1.21.x | `ArabicTranslator-2.0.0-mc1.21.jar` | 21 |
-| Paper 26.x | `ArabicTranslator-2.0.0-mc26.jar` | 25 |
 
 どちらも [Actions の実行結果](https://github.com/warasugitewara/arabic-translator-MCplugin/actions/workflows/build.yml)
 に artifact として添付されています。
@@ -351,12 +353,12 @@ Steve: 你好 | nǐ hǎo
 ### ソースからのビルド
 
 ```bash
-./gradlew build                    # Paper 1.21.x（既定）
-./gradlew build -Ptarget=paper26   # Paper 26.x
+./gradlew build                     # Paper 26.2（既定）
+./gradlew build -Ptarget=paper121   # Paper 1.21.x
 ```
 
 jar は `build/libs/` に出力されます。Gradle は wrapper が入手し、ターゲットに必要な
-JDK（21 または 25）も未インストールなら自動で取得されます。
+JDK（25 または 21）も未インストールなら自動で取得されます。
 
 `./gradlew test` で音写・ピンイン・キャッシュのテストだけを実行できます。
 
